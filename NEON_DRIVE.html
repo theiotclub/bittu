@@ -1,0 +1,324 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON DRIVE - Hyper Cockpit</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;padding:16px;background:#050711;color:#eafaff;
+ font-family:Arial,sans-serif;
+ background-image:radial-gradient(ellipse at 50% 0%,#10264a,#050711 65%);
+}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.logo{font-size:25px;font-weight:900;letter-spacing:4px;color:#21edff;text-shadow:0 0 18px #00dfff}
+.status{font-size:12px;color:#ffbd55}
+main{max-width:1050px;margin:22px auto;display:grid;gap:16px}
+.panel{
+ background:linear-gradient(145deg,#101a2cdd,#090e1c);
+ border:1px solid #1a5570;border-radius:18px;
+ padding:16px;box-shadow:0 0 22px #00d9ff18;
+}
+h3{font-size:12px;letter-spacing:2px;color:#77eaff;margin:0 0 15px}
+input,button{font:inherit}
+input{
+ background:#050b16;color:white;border:1px solid #24627c;
+ padding:12px;border-radius:9px;width:100%;
+}
+button{
+ border:1px solid #167d9c;background:#10283c;color:#e8fbff;
+ border-radius:12px;padding:13px;cursor:pointer;
+ touch-action:none;
+}
+button:active{transform:scale(.95);background:#087d99}
+.connect,.modes,.gears{display:flex;gap:8px;margin-top:9px}
+.connect button,.modes button,.gears button{flex:1}
+.green{border-color:#28e6a4;color:#49ffc0}
+.red{border-color:#ff536b;color:#ff8292}
+.active{background:#064f69;box-shadow:0 0 16px #00dfff55}
+.dashboard{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.speed{text-align:center}
+.speed strong{
+ display:block;font-size:65px;color:#35edff;
+ text-shadow:0 0 22px #00dfff
+}
+.speed small{color:#8cb4c9;letter-spacing:3px}
+.meter{height:8px;background:#17283b;border-radius:20px;overflow:hidden;margin:12px 0}
+.meter div{height:100%;width:0%;background:linear-gradient(90deg,#00eaff,#b65cff)}
+.gears button{font-weight:bold}
+.gears .selected{background:#7135a9;border-color:#c47aff}
+.controlarea{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}
+.wheel-wrap{display:grid;place-items:center;min-height:230px}
+.wheel{
+ width:190px;height:190px;border:13px solid #25394d;
+ border-radius:50%;position:relative;
+ box-shadow:0 0 20px #00dfff44,inset 0 0 20px #00dfff22;
+ touch-action:none;
+ transition:transform .08s linear;
+ user-select:none;
+}
+.wheel:before,.wheel:after{
+ content:"";position:absolute;background:#42eaff;
+ box-shadow:0 0 12px #00dfff;
+}
+.wheel:before{width:13px;height:90px;left:50%;top:0;transform:translateX(-50%)}
+.wheel:after{width:115px;height:12px;left:50%;top:62%;transform:translateX(-50%)}
+.hub{
+ position:absolute;inset:36%;border-radius:50%;
+ background:#12283c;border:3px solid #40eaff;
+}
+.pedals{display:flex;gap:12px;justify-content:center}
+.pedal{height:145px;flex:1;max-width:100px;font-weight:bold;letter-spacing:2px}
+.accel{background:linear-gradient(#075c4c,#062c2c);border-color:#00ffae;color:#7dffd3}
+.brake{background:linear-gradient(#6a1730,#30101d);border-color:#ff456a;color:#ff9aaa}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:330px;margin:auto}
+.pad button{height:65px;font-size:22px}
+.stop{background:#701c30;border-color:#ff4768;font-weight:900}
+.hidden{display:none!important}
+footer{text-align:center;color:#57778d;font-size:11px;padding:12px}
+@media(max-width:650px){
+ .dashboard,.controlarea{grid-template-columns:1fr}
+ .wheel{width:165px;height:165px}
+ .pedal{height:110px}
+}
+</style>
+</head>
+
+<body>
+<header>
+ <div class="logo">⚡ NEON DRIVE</div>
+ <div class="status" id="status">● OFFLINE</div>
+</header>
+
+<main>
+<section class="panel">
+ <h3>01 / VEHICLE CONNECTION</h3>
+ <input id="ip" value="http://192.168.4.1" placeholder="NodeMCU IP address">
+ <div class="connect">
+  <button class="green" onclick="connectCar()">CONNECT</button>
+  <button class="red" onclick="disconnectCar()">DISCONNECT</button>
+ </div>
+</section>
+
+<section class="panel">
+ <h3>02 / CONTROL SYSTEM</h3>
+ <div class="modes">
+  <button id="wheelMode" class="active" onclick="setMode('wheel')">STEERING</button>
+  <button id="padMode" onclick="setMode('pad')">DIRECTION PAD</button>
+ </div>
+</section>
+
+<section class="dashboard">
+ <div class="panel speed">
+  <h3>03 / DIGITAL SPEED</h3>
+  <strong id="speed">000</strong>
+  <small>SIMULATED SPEED</small>
+  <div class="meter"><div id="meter"></div></div>
+  <small id="driveStatus">READY</small>
+ </div>
+
+ <div class="panel">
+  <h3>04 / TRANSMISSION</h3>
+  <div class="gears">
+   <button id="gearD" class="selected" onclick="setGear('D')">D</button>
+   <button id="gearN" onclick="setGear('N')">N</button>
+   <button id="gearR" onclick="setGear('R')">R</button>
+  </div>
+  <p style="color:#7294a9;font-size:12px">D = Forward | N = Neutral | R = Reverse</p>
+  <h3>CONNECTION</h3>
+  <div id="connectionText">Waiting for NodeMCU...</div>
+ </div>
+</section>
+
+<section class="panel" id="wheelSection">
+ <h3>05 / 360° STEERING + PEDALS</h3>
+ <div class="controlarea">
+  <div class="wheel-wrap">
+   <div class="wheel" id="wheel"><div class="hub"></div></div>
+  </div>
+  <div class="pedals">
+   <button class="pedal accel" id="accelerator">▲<br>GAS</button>
+   <button class="pedal brake" id="brake">▼<br>BRAKE</button>
+  </div>
+ </div>
+ <p style="text-align:center;color:#7cc9dc;font-size:12px">Turn left and right to steer</p>
+</section>
+
+<section class="panel hidden" id="padSection">
+ <h3>05 / ARCADE DIRECTION CONTROL</h3>
+ <div class="pad">
+  <div></div><button id="up">▲</button><div></div>
+  <button id="left">◀</button>
+  <button class="stop" id="stop">STOP</button>
+  <button id="right">▶</button>
+  <div></div><button id="down">▼</button><div></div>
+ </div>
+</section>
+
+<footer>NEON DRIVE · HYPER COCKPIT · ESP8266</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let connected=false,gear='D';
+let throttle=0,steering=0,braking=0,speed=0;
+let base=()=>$('ip').value.replace(/\/$/,'');
+
+async function request(path){
+ if(!connected)return;
+ try{
+  await fetch(base()+path,{mode:'cors'});
+ }catch(e){
+  $('connectionText').textContent='Command not received';
+ }
+}
+
+async function connectCar(){
+ $('status').textContent='● CONNECTING...';
+ try{
+  let r=await fetch(base()+'/ping');
+  if(!r.ok)throw Error();
+  connected=true;
+  $('status').textContent='● ONLINE';
+  $('status').style.color='#43ffb5';
+  $('connectionText').textContent='NodeMCU connected';
+ }catch(e){
+  connected=false;
+  $('status').textContent='● CONNECTION FAILED';
+  $('connectionText').textContent='Check Wi-Fi and firmware';
+ }
+}
+
+function disconnectCar(){
+ connected=false;
+ stopAll();
+ $('status').textContent='● OFFLINE';
+ $('status').style.color='#ffbd55';
+ $('connectionText').textContent='Disconnected';
+}
+
+function setMode(m){
+ $('wheelMode').classList.toggle('active',m==='wheel');
+ $('padMode').classList.toggle('active',m==='pad');
+ $('wheelSection').classList.toggle('hidden',m!=='wheel');
+ $('padSection').classList.toggle('hidden',m!=='pad');
+ stopAll();
+}
+
+function setGear(g){
+ gear=g;
+ ['D','N','R'].forEach(x=>
+  $('gear'+x).classList.toggle('selected',x===g)
+ );
+ sendDrive();
+}
+
+function sendDrive(){
+ request('/drive?throttle='+throttle+
+ '&steering='+steering+'&gear='+gear+'&brake='+braking);
+}
+
+function sendMove(m){
+ request('/cmd?move='+m+'&speed='+Math.round(throttle*100));
+}
+
+function stopAll(){
+ throttle=0;steering=0;braking=0;speed=0;
+ updateDisplay();
+ sendDrive();
+ sendMove('S');
+}
+
+function updateDisplay(){
+ $('speed').textContent=String(Math.round(speed)).padStart(3,'0');
+ $('meter').style.width=speed+'%';
+ $('driveStatus').textContent=
+  braking?'BRAKING':throttle?'DRIVING':'READY';
+}
+
+function update(){
+ speed=Math.max(0,Math.min(100,throttle*100));
+ updateDisplay();
+ sendDrive();
+}
+
+function holdButton(id,down,up){
+ const b=$(id);
+ b.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  b.setPointerCapture(e.pointerId);
+  down();
+ });
+ ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>
+  b.addEventListener(ev,up)
+ );
+}
+
+holdButton('accelerator',()=>{
+ throttle=1;braking=0;update();
+},()=>{
+ throttle=0;update();
+});
+
+holdButton('brake',()=>{
+ braking=1;throttle=0;update();
+},()=>{
+ braking=0;update();
+});
+
+/* 360 DEGREE STEERING */
+const wheel=$('wheel');
+let wheelActive=false;
+
+wheel.addEventListener('pointerdown',e=>{
+ wheelActive=true;
+ wheel.setPointerCapture(e.pointerId);
+ turnWheel(e);
+});
+
+wheel.addEventListener('pointermove',e=>{
+ if(wheelActive)turnWheel(e);
+});
+
+function turnWheel(e){
+ const r=wheel.getBoundingClientRect();
+ const x=(e.clientX-(r.left+r.width/2))/(r.width/2);
+
+ steering=Math.max(-1,Math.min(1,x));
+
+ // -180 degrees left to +180 degrees right
+ wheel.style.transform='rotate('+steering*180+'deg)';
+
+ sendDrive();
+}
+
+function releaseWheel(){
+ wheelActive=false;
+ steering=0;
+ wheel.style.transform='rotate(0deg)';
+ sendDrive();
+}
+
+wheel.addEventListener('pointerup',releaseWheel);
+wheel.addEventListener('pointercancel',releaseWheel);
+
+function padHold(id,move){
+ holdButton(id,()=>sendMove(move),()=>sendMove('S'));
+}
+
+padHold('up','F');
+padHold('down','B');
+padHold('left','L');
+padHold('right','R');
+
+$('stop').addEventListener('click',stopAll);
+window.addEventListener('blur',stopAll);
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)stopAll();
+});
+</script>
+</body>
+</html>
